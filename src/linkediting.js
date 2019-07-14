@@ -50,11 +50,13 @@ export default class LinkEditing extends Plugin {
 
 		// Allow link attribute on all inline nodes.
 		editor.model.schema.extend( '$text', { allowAttributes: 'linkHref' } );
+    editor.model.schema.extend( '$text', { allowAttributes: 'class' } );
+    editor.model.schema.extend( '$text', { allowAttributes: 'id' } );
 
 		editor.conversion.for( 'dataDowncast' )
 			.attributeToElement( { model: 'linkHref', view: createLinkElement } );
 
-		editor.conversion.for( 'editingDowncast' )
+    editor.conversion.for( 'editingDowncast' )
 			.attributeToElement( { model: 'linkHref', view: ( href, writer ) => {
 				return createLinkElement( ensureSafeUrl( href ), writer );
 			} } );
@@ -72,6 +74,57 @@ export default class LinkEditing extends Plugin {
 					value: viewElement => viewElement.getAttribute( 'href' )
 				}
 			} );
+
+    editor.conversion.for( 'upcast' )
+      .elementToAttribute( {
+        view: {
+          name: 'a',
+          attributes: {
+            id: true
+          }
+        },
+        model: {
+          key: 'id'
+				}
+		} );
+
+    editor.conversion.for( 'downcast' ).attributeToElement( {
+      model: 'id',
+      view: ( value, writer ) => {
+      	console.log('downcast for id', value, writer)
+				if ( value ) {
+          const attributes = { 'id': value };
+					const element = writer.createAttributeElement( 'a', attributes, { priority: 5 } );
+					writer.setCustomProperty( 'link', true, element );
+					return element;
+				}
+			} } );
+
+    editor.conversion.for( 'upcast' )
+      .elementToAttribute( {
+        view: {
+          name: 'a',
+          attributes: {
+            class: true
+          }
+        },
+        model: {
+          key: 'class',
+          value: viewElement => viewElement.getAttribute( 'class' )
+      }
+  	} );
+
+    editor.conversion.for( 'downcast' ).attributeToElement( {
+      model: 'class',
+      view: ( value, writer ) => {
+				console.log('downcast for class', value, writer)
+				if ( value ) {
+					const attributes = { 'class': value };
+					const element = writer.createAttributeElement( 'a', attributes, { priority: 5 } );
+					writer.setCustomProperty( 'link', true, element );
+					return element;
+				}
+			} } );
 
 		// Create linking commands.
 		editor.commands.add( 'link', new LinkCommand( editor ) );

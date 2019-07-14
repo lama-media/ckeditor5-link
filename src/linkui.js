@@ -16,6 +16,7 @@ import clickOutsideHandler from '@ckeditor/ckeditor5-ui/src/bindings/clickoutsid
 
 import ButtonView from '@ckeditor/ckeditor5-ui/src/button/buttonview';
 import LinkFormView from './ui/linkformview';
+import LinkStylesView from './ui/linkstylesview';
 import LinkActionsView from './ui/linkactionsview';
 
 import linkIcon from '../theme/icons/link.svg';
@@ -67,6 +68,8 @@ export default class LinkUI extends Plugin {
 		 */
 		this.formView = this._createFormView();
 
+    this.stylesView = this._createStylesView();
+
 		/**
 		 * The contextual balloon plugin instance.
 		 *
@@ -111,6 +114,11 @@ export default class LinkUI extends Plugin {
 		// Execute unlink command after clicking on the "Edit" button.
 		this.listenTo( actionsView, 'edit', () => {
 			this._addFormView();
+		} );
+
+    // Execute unlink command after clicking on the "Edit" button.
+    this.listenTo( actionsView, 'editStyles', () => {
+				this._addStylesView();
 		} );
 
 		// Execute unlink command after clicking on the "Unlink" button.
@@ -171,6 +179,43 @@ export default class LinkUI extends Plugin {
 
 		return formView;
 	}
+
+  _createStylesView() {
+    const editor = this.editor;
+    const linkCommand = editor.commands.get( 'link' );
+
+    const formView = new LinkStylesView( editor.locale );
+
+    formView.classInputView.bind( 'value' ).to( linkCommand, 'class' );
+    formView.idInputView.bind( 'value' ).to( linkCommand, 'id' );
+
+    // Form elements should be read-only when corresponding commands are disabled.
+    // formView.classInputView.bind( 'isReadOnly' ).to( linkCommand, 'isEnabled', value => !value );
+
+    formView.saveButtonView.bind( 'isEnabled' ).to( linkCommand );
+
+    // Execute link command after clicking the "Save" button.
+    this.listenTo( formView, 'submit', () => {
+      console.log('formView listenTo submit')
+    	console.log('submited styles', formView.getSubmitState() )
+      editor.execute( 'link', false, false, formView.getSubmitState() );
+			this._closeStylesView();
+		} );
+
+    // Hide the panel after clicking the "Cancel" button.
+    this.listenTo( formView, 'cancel', () => {
+    	console.log('formView listenTo cancel')
+      this._closeStylesView();
+  	} );
+
+    // Close the panel on esc key press when the **form has focus**.
+    formView.keystrokes.set( 'Esc', ( data, cancel ) => {
+      this._closeStylesView();
+			cancel();
+		} );
+
+    return formView;
+  }
 
 	/**
 	 * Creates a toolbar Link button. Clicking this button will show
@@ -310,6 +355,39 @@ export default class LinkUI extends Plugin {
 		this.formView.urlInputView.inputView.element.value = linkCommand.value || '';
 	}
 
+  /**
+   * Adds the {@link #formView} to the {@link #_balloon}.
+   *
+   * @protected
+   */
+  _addStylesView() {
+    if ( this._isFormInPanel ) {
+      return;
+    }
+
+    const editor = this.editor;
+    const linkCommand = editor.commands.get( 'link' );
+
+    this._balloon.add( {
+      view: this.stylesView,
+      position: this._getBalloonPositionData()
+    } );
+
+    // Select input when form view is currently visible.
+    if ( this._balloon.visibleView === this.stylesView ) {
+      this.stylesView.classInputView.select();
+    }
+
+    // Make sure that each time the panel shows up, the URL field remains in sync with the value of
+    // the command. If the user typed in the input, then canceled the balloon (`urlInputView#value` stays
+    // unaltered) and re-opened it without changing the value of the link command (e.g. because they
+    // clicked the same link), they would see the old value instead of the actual value of the command.
+    // https://github.com/ckeditor/ckeditor5-link/issues/78
+    // https://github.com/ckeditor/ckeditor5-link/issues/123
+    this.stylesView.classInputView.inputView.element.value = linkCommand.class || '';
+    this.stylesView.idInputView.inputView.element.value = linkCommand.id || '';
+  }
+
 	/**
 	 * Closes form view. Decides whether the balloon should be hidden completely or if action view should be shown. This is decided upon
 	 * link command value (which has value if the document selection is in link).
@@ -333,6 +411,10 @@ export default class LinkUI extends Plugin {
 		}
 	}
 
+  _closeStylesView() {
+    this._removeStylesView();
+  }
+
 	/**
 	 * Removes the {@link #formView} from the {@link #_balloon}.
 	 *
@@ -351,6 +433,20 @@ export default class LinkUI extends Plugin {
 			this.editor.editing.view.focus();
 		}
 	}
+
+  _removeStylesView() {
+    if ( this._isStylesInPanel ) {
+      // Blur the input element before removing it from DOM to prevent issues in some browsers.
+      // See https://github.com/ckeditor/ckeditor5/issues/1501.
+      this.stylesView.saveButtonView.focus();
+
+      this._balloon.remove( this.stylesView );
+
+      // Because the form has an input which has focus, the focus must be brought back
+      // to the editor. Otherwise, it would be lost.
+      this.editor.editing.view.focus();
+    }
+  }
 
 	/**
 	 * Shows the right kind of the UI for current state of the command. It's either
@@ -421,6 +517,7 @@ export default class LinkUI extends Plugin {
 
 		// Remove form first because it's on top of the stack.
 		this._removeFormView();
+    this._removeStylesView();
 
 		// Then remove the actions view because it's beneath the form.
 		this._balloon.remove( this.actionsView );
@@ -490,6 +587,17 @@ export default class LinkUI extends Plugin {
 	get _isFormInPanel() {
 		return this._balloon.hasView( this.formView );
 	}
+
+  /**
+   * Returns true when {@link #formView} is in the {@link #_balloon}.
+   *
+   * @readonly
+   * @protected
+   * @type {Boolean}
+   */
+  get _isStylesInPanel() {
+    return this._balloon.hasView( this.stylesView );
+  }
 
 	/**
 	 * Returns true when {@link #actionsView} is in the {@link #_balloon}.

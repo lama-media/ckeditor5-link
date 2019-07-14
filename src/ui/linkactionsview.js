@@ -74,6 +74,13 @@ export default class LinkActionsView extends View {
 		 */
 		this.editButtonView = this._createButton( t( 'Edit link' ), pencilIcon, 'edit' );
 
+    /**
+     * The edit link button view.
+     *
+     * @member {module:ui/button/buttonview~ButtonView}
+     */
+    this.stylesButtonView = this._createButton( t( 'Link styles' ), pencilIcon, 'editStyles' );
+
 		/**
 		 * Value of the "href" attribute of the link to use in the {@link #previewButtonView}.
 		 *
@@ -126,6 +133,7 @@ export default class LinkActionsView extends View {
 
 			children: [
 				this.previewButtonView,
+        this.stylesButtonView,
 				this.editButtonView,
 				this.unlinkButtonView
 			]
@@ -139,6 +147,7 @@ export default class LinkActionsView extends View {
 		super.render();
 
 		const childViews = [
+      this.stylesButtonView,
 			this.previewButtonView,
 			this.editButtonView,
 			this.unlinkButtonView

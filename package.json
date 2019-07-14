@@ -1,20 +1,45 @@
 {
-  "name": "@ckeditor/ckeditor5-link",
-  "version": "11.1.1",
-  "description": "Link feature for CKEditor 5.",
-  "keywords": [
-    "ckeditor",
-    "ckeditor5",
-    "ckeditor 5",
-    "ckeditor5-feature",
-    "ckeditor5-plugin"
+  "_from": "@ckeditor/ckeditor5-link@^11.0.1",
+  "_id": "@ckeditor/ckeditor5-link@11.1.1",
+  "_inBundle": false,
+  "_integrity": "sha512-9Ypb5jWmthTcig9LYpjxthUqSWwLR6lLIu/Ji0h5RGDax49fVpw83oRFlscmJYfY4N1qGG1thlaOIitjrI9hAw==",
+  "_location": "/@ckeditor/ckeditor5-link",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "range",
+    "registry": true,
+    "raw": "@ckeditor/ckeditor5-link@^11.0.1",
+    "name": "@ckeditor/ckeditor5-link",
+    "escapedName": "@ckeditor%2fckeditor5-link",
+    "scope": "@ckeditor",
+    "rawSpec": "^11.0.1",
+    "saveSpec": null,
+    "fetchSpec": "^11.0.1"
+  },
+  "_requiredBy": [
+    "#USER",
+    "/"
   ],
+  "_resolved": "https://registry.npmjs.org/@ckeditor/ckeditor5-link/-/ckeditor5-link-11.1.1.tgz",
+  "_shasum": "c4b660235187aec631e22c815a061ff74cce2b7e",
+  "_spec": "@ckeditor/ckeditor5-link@^11.0.1",
+  "_where": "/Users/mike/Packages/sails-panel-ui",
+  "author": {
+    "name": "CKSource",
+    "url": "http://cksource.com/"
+  },
+  "bugs": {
+    "url": "https://github.com/ckeditor/ckeditor5-link/issues"
+  },
+  "bundleDependencies": false,
   "dependencies": {
     "@ckeditor/ckeditor5-core": "^12.2.1",
     "@ckeditor/ckeditor5-engine": "^13.2.1",
     "@ckeditor/ckeditor5-ui": "^13.0.2",
     "lodash-es": "^4.17.10"
   },
+  "deprecated": false,
+  "description": "Link feature for CKEditor 5.",
   "devDependencies": {
     "@ckeditor/ckeditor5-clipboard": "^12.0.1",
     "@ckeditor/ckeditor5-editor-classic": "^12.1.3",
@@ -33,34 +58,41 @@
     "node": ">=8.0.0",
     "npm": ">=5.7.1"
   },
-  "author": "CKSource (http://cksource.com/)",
-  "license": "GPL-2.0-or-later",
-  "homepage": "https://ckeditor.com/ckeditor-5",
-  "bugs": "https://github.com/ckeditor/ckeditor5-link/issues",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ckeditor/ckeditor5-link.git"
-  },
+  "eslintIgnore": [
+    "src/lib/**",
+    "packages/**"
+  ],
   "files": [
     "lang",
     "src",
     "theme"
   ],
-  "scripts": {
-    "lint": "eslint --quiet '**/*.js'"
+  "homepage": "https://ckeditor.com/ckeditor-5",
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
   },
+  "keywords": [
+    "ckeditor",
+    "ckeditor5",
+    "ckeditor 5",
+    "ckeditor5-feature",
+    "ckeditor5-plugin"
+  ],
+  "license": "GPL-2.0-or-later",
   "lint-staged": {
     "**/*.js": [
       "eslint --quiet"
     ]
   },
-  "eslintIgnore": [
-    "src/lib/**",
-    "packages/**"
-  ],
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  }
+  "name": "@ckeditor/ckeditor5-link",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ckeditor/ckeditor5-link.git"
+  },
+  "scripts": {
+    "lint": "eslint --quiet '**/*.js'"
+  },
+  "version": "11.1.1"
 }

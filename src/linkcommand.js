@@ -58,6 +58,8 @@ export default class LinkCommand extends Command {
 		const doc = model.document;
 
 		this.value = doc.selection.getAttribute( 'linkHref' );
+    this.class = doc.selection.getAttribute( 'class' ) || '';
+    this.id = doc.selection.getAttribute( 'id' ) || '';
 
 		for ( const manualDecorator of this.manualDecorators ) {
 			manualDecorator.value = this._getDecoratorStateFromModel( manualDecorator.id );
@@ -128,20 +130,25 @@ export default class LinkCommand extends Command {
 	 * @param {String} href Link destination.
 	 * @param {Object} [manualDecoratorIds={}] The information about manual decorator attributes to be applied or removed upon execution.
 	 */
-	execute( href, manualDecoratorIds = {} ) {
+	execute( href, manualDecoratorIds = {}, styles = {} ) {
+
+		console.log('this.execute2', styles )
+
 		const model = this.editor.model;
 		const selection = model.document.selection;
 		// Stores information about manual decorators to turn them on/off when command is applied.
 		const truthyManualDecorators = [];
 		const falsyManualDecorators = [];
 
-		for ( const name in manualDecoratorIds ) {
-			if ( manualDecoratorIds[ name ] ) {
-				truthyManualDecorators.push( name );
-			} else {
-				falsyManualDecorators.push( name );
+		if( manualDecoratorIds ) {
+			for ( const name in manualDecoratorIds ) {
+				if ( manualDecoratorIds[ name ] ) {
+					truthyManualDecorators.push( name );
+				} else {
+					falsyManualDecorators.push( name );
+				}
 			}
-		}
+    }
 
 		model.change( writer => {
 			// If selection is collapsed then update selected link or insert new one at the place of caret.
@@ -153,7 +160,14 @@ export default class LinkCommand extends Command {
 					// Then update `linkHref` value.
 					const linkRange = findLinkRange( position, selection.getAttribute( 'linkHref' ), model );
 
-					writer.setAttribute( 'linkHref', href, linkRange );
+					if( href )
+						writer.setAttribute( 'linkHref', href, linkRange );
+
+          if( styles.id )
+            writer.setAttribute( 'id', styles.id, linkRange );
+
+          if( styles.class )
+            writer.setAttribute( 'class', styles.class, linkRange );
 
 					truthyManualDecorators.forEach( item => {
 						writer.setAttribute( item, true, linkRange );
@@ -169,10 +183,16 @@ export default class LinkCommand extends Command {
 				// If not then insert text node with `linkHref` attribute in place of caret.
 				// However, since selection in collapsed, attribute value will be used as data for text node.
 				// So, if `href` is empty, do not create text node.
-				else if ( href !== '' ) {
+				else if ( href !== '' && href !== false ) {
 					const attributes = toMap( selection.getAttributes() );
 
 					attributes.set( 'linkHref', href );
+
+          if( styles.id )
+            attributes.set( 'id', styles.id  );
+
+          if( styles.class )
+            attributes.set( 'class', styles.class );
 
 					truthyManualDecorators.forEach( item => {
 						attributes.set( item, true );
@@ -191,7 +211,9 @@ export default class LinkCommand extends Command {
 				const ranges = model.schema.getValidRanges( selection.getRanges(), 'linkHref' );
 
 				for ( const range of ranges ) {
-					writer.setAttribute( 'linkHref', href, range );
+
+					if( href )
+						writer.setAttribute( 'linkHref', href, range );
 
 					truthyManualDecorators.forEach( item => {
 						writer.setAttribute( item, true, range );
@@ -200,10 +222,17 @@ export default class LinkCommand extends Command {
 					falsyManualDecorators.forEach( item => {
 						writer.removeAttribute( item, range );
 					} );
+
+          if( styles.id )
+            writer.setAttribute( 'id', styles.id, range );
+
+          if( styles.class )
+            writer.setAttribute( 'class', styles.class, range );
 				}
 			}
 		} );
 	}
+
 
 	/**
 	 * Method provides the information if a decorator with given name is present in currently processed selection.
