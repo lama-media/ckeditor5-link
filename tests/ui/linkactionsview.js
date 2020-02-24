@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2019, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2020, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -84,8 +84,12 @@ describe( 'LinkActionsView', () => {
 				expect( view.previewButtonView.element.classList.contains( 'ck-link-actions__preview' ) ).to.be.true;
 			} );
 
-			it( 'has a target attribute', () => {
+			it( 'has a "target" attribute', () => {
 				expect( view.previewButtonView.element.getAttribute( 'target' ) ).to.equal( '_blank' );
+			} );
+
+			it( 'has a "rel" attribute', () => {
+				expect( view.previewButtonView.element.getAttribute( 'rel' ) ).to.equal( 'noopener noreferrer' );
 			} );
 
 			describe( '<a> bindings', () => {

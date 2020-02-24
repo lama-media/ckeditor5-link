@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2019, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2020, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -12,6 +12,7 @@ import { setData as setModelData } from '@ckeditor/ckeditor5-engine/src/dev-util
 import { getData as getViewData } from '@ckeditor/ckeditor5-engine/src/dev-utils/view';
 
 import Paragraph from '@ckeditor/ckeditor5-paragraph/src/paragraph';
+import BlockQuote from '@ckeditor/ckeditor5-block-quote/src/blockquote';
 import LinkEditing from '../src/linkediting';
 import LinkUI from '../src/linkui';
 import LinkFormView from '../src/ui/linkformview';
@@ -33,7 +34,7 @@ describe( 'LinkUI', () => {
 
 		return ClassicTestEditor
 			.create( editorElement, {
-				plugins: [ LinkEditing, LinkUI, Paragraph ]
+				plugins: [ LinkEditing, LinkUI, Paragraph, BlockQuote ]
 			} )
 			.then( newEditor => {
 				editor = newEditor;
@@ -84,17 +85,21 @@ describe( 'LinkUI', () => {
 				expect( linkButton ).to.be.instanceOf( ButtonView );
 			} );
 
+			it( 'should be toggleable button', () => {
+				expect( linkButton.isToggleable ).to.be.true;
+			} );
+
 			it( 'should be bound to the link command', () => {
 				const command = editor.commands.get( 'link' );
 
 				command.isEnabled = true;
-				command.value = true;
+				command.value = 'http://ckeditor.com';
 
 				expect( linkButton.isOn ).to.be.true;
 				expect( linkButton.isEnabled ).to.be.true;
 
 				command.isEnabled = false;
-				command.value = false;
+				command.value = undefined;
 
 				expect( linkButton.isOn ).to.be.false;
 				expect( linkButton.isEnabled ).to.be.false;
@@ -115,15 +120,6 @@ describe( 'LinkUI', () => {
 		beforeEach( () => {
 			balloonAddSpy = testUtils.sinon.spy( balloon, 'add' );
 			editor.editing.view.document.isFocused = true;
-		} );
-
-		it( 'should not work if the link command is disabled', () => {
-			setModelData( editor.model, '<paragraph>f[o]o</paragraph>' );
-			editor.commands.get( 'link' ).isEnabled = false;
-
-			linkUIFeature._showUI();
-
-			expect( balloon.visibleView ).to.be.null;
 		} );
 
 		it( 'should not throw if the UI is already visible', () => {
@@ -269,6 +265,42 @@ describe( 'LinkUI', () => {
 			expect( balloon.visibleView ).to.equal( formView );
 		} );
 
+		// https://github.com/ckeditor/ckeditor5-link/issues/242.
+		it( 'should update balloon position when is switched in rotator to a visible panel', () => {
+			setModelData( editor.model, '<paragraph>fo<$text linkHref="foo">o[] b</$text>ar</paragraph>' );
+			linkUIFeature._showUI();
+
+			const customView = new View();
+			const linkViewElement = editor.editing.view.document.getRoot().getChild( 0 ).getChild( 1 );
+			const linkDomElement = editor.editing.view.domConverter.mapViewToDom( linkViewElement );
+
+			expect( balloon.visibleView ).to.equal( actionsView );
+			expect( balloon.view.pin.lastCall.args[ 0 ].target ).to.equal( linkDomElement );
+
+			balloon.add( {
+				stackId: 'custom',
+				view: customView,
+				position: { target: {} }
+			} );
+
+			balloon.showStack( 'custom' );
+
+			expect( balloon.visibleView ).to.equal( customView );
+			expect( balloon.hasView( actionsView ) ).to.equal( true );
+
+			editor.execute( 'blockQuote' );
+			balloon.showStack( 'main' );
+
+			expect( balloon.visibleView ).to.equal( actionsView );
+			expect( balloon.hasView( customView ) ).to.equal( true );
+			expect( balloon.view.pin.lastCall.args[ 0 ].target ).to.not.equal( linkDomElement );
+
+			const newLinkViewElement = editor.editing.view.document.getRoot().getChild( 0 ).getChild( 0 ).getChild( 1 );
+			const newLinkDomElement = editor.editing.view.domConverter.mapViewToDom( newLinkViewElement );
+
+			expect( balloon.view.pin.lastCall.args[ 0 ].target ).to.equal( newLinkDomElement );
+		} );
+
 		describe( 'response to ui#update', () => {
 			let view, viewDocument;
 
@@ -335,6 +367,31 @@ describe( 'LinkUI', () => {
 				sinon.assert.calledWithExactly( spy, {
 					target: editorElement.ownerDocument.getSelection().getRangeAt( 0 )
 				} );
+			} );
+
+			it( 'not update the position when is in not visible stack', () => {
+				setModelData( editor.model, '<paragraph><$text linkHref="url">f[]oo</$text></paragraph>' );
+
+				linkUIFeature._showUI();
+
+				const customView = new View();
+
+				balloon.add( {
+					stackId: 'custom',
+					view: customView,
+					position: { target: {} }
+				} );
+
+				balloon.showStack( 'custom' );
+
+				expect( balloon.visibleView ).to.equal( customView );
+				expect( balloon.hasView( actionsView ) ).to.equal( true );
+
+				const spy = testUtils.sinon.spy( balloon, 'updatePosition' );
+
+				editor.ui.fire( 'update' );
+
+				sinon.assert.notCalled( spy );
 			} );
 
 			// https://github.com/ckeditor/ckeditor5-link/issues/113
@@ -466,19 +523,6 @@ describe( 'LinkUI', () => {
 	describe( 'keyboard support', () => {
 		it( 'should show the UI on Ctrl+K keystroke', () => {
 			const spy = testUtils.sinon.stub( linkUIFeature, '_showUI' ).returns( {} );
-			const command = editor.commands.get( 'link' );
-
-			command.isEnabled = false;
-
-			editor.keystrokes.press( {
-				keyCode: keyCodes.k,
-				ctrlKey: true,
-				preventDefault: sinon.spy(),
-				stopPropagation: sinon.spy()
-			} );
-			sinon.assert.notCalled( spy );
-
-			command.isEnabled = true;
 
 			editor.keystrokes.press( {
 				keyCode: keyCodes.k,
@@ -1005,6 +1049,7 @@ describe( 'LinkUI', () => {
 
 				afterEach( () => {
 					editorElement.remove();
+					return editor.destroy();
 				} );
 
 				it( 'should gather information about manual decorators', () => {

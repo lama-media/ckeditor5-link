@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2019, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2020, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or https://ckeditor.com/legal/ckeditor-oss-license
  */
 
@@ -146,7 +146,7 @@ export default class LinkUI extends Plugin {
 	 * Creates the {@link module:link/ui/linkformview~LinkFormView} instance.
 	 *
 	 * @private
-	 * @returns {module:link/ui/linkformview~LinkFormView} The link form instance.
+	 * @returns {module:link/ui/linkformview~LinkFormView} The link form view instance.
 	 */
 	_createFormView() {
 		const editor = this.editor;
@@ -233,9 +233,7 @@ export default class LinkUI extends Plugin {
 			// Prevent focusing the search bar in FF and opening new tab in Edge. #153, #154.
 			cancel();
 
-			if ( linkCommand.isEnabled ) {
-				this._showUI( true );
-			}
+			this._showUI( true );
 		} );
 
 		editor.ui.componentFactory.add( 'link', locale => {
@@ -246,9 +244,11 @@ export default class LinkUI extends Plugin {
 			button.icon = linkIcon;
 			button.keystroke = linkKeystroke;
 			button.tooltip = true;
+			button.isToggleable = true;
 
 			// Bind button to the command.
-			button.bind( 'isOn', 'isEnabled' ).to( linkCommand, 'value', 'isEnabled' );
+			button.bind( 'isEnabled' ).to( linkCommand, 'isEnabled' );
+			button.bind( 'isOn' ).to( linkCommand, 'value', value => !!value );
 
 			// Show the panel on button click.
 			this.listenTo( button, 'execute', () => this._showUI( true ) );
@@ -389,19 +389,19 @@ export default class LinkUI extends Plugin {
   }
 
 	/**
-	 * Closes form view. Decides whether the balloon should be hidden completely or if action view should be shown. This is decided upon
-	 * link command value (which has value if the document selection is in link).
+	 * Closes the form view. Decides whether the balloon should be hidden completely or if the action view should be shown. This is
+	 * decided upon the link command value (which has a value if the document selection is in the link).
 	 *
-	 * If there are defined {@link module:link/link~LinkConfig#decorators} in editor's config, then there are additionally
-	 * rest switch buttons state responsible for manual decorators handling.
+	 * Additionally, if any {@link module:link/link~LinkConfig#decorators} are defined in the editor configuration, the state of
+	 * switch buttons responsible for manual decorator handling is restored.
 	 *
 	 * @private
 	 */
 	_closeFormView() {
 		const linkCommand = this.editor.commands.get( 'link' );
 
-		// Reset manual decorator states to represent current model state. This case is important to reset switch buttons,
-		// when user cancel editing form.
+		// Restore manual decorator states to represent the current model state. This case is important to reset the switch buttons
+		// when the user cancels the editing form.
 		linkCommand.restoreManualDecoratorStates();
 
 		if ( linkCommand.value !== undefined ) {
@@ -449,20 +449,12 @@ export default class LinkUI extends Plugin {
   }
 
 	/**
-	 * Shows the right kind of the UI for current state of the command. It's either
-	 * {@link #formView} or {@link #actionsView}.
+	 * Shows the correct UI type. It is either {@link #formView} or {@link #actionsView}.
 	 *
 	 * @param {Boolean} forceVisible
 	 * @private
 	 */
 	_showUI( forceVisible = false ) {
-		const editor = this.editor;
-		const linkCommand = editor.commands.get( 'link' );
-
-		if ( !linkCommand.isEnabled ) {
-			return;
-		}
-
 		// When there's no link under the selection, go straight to the editing UI.
 		if ( !this._getSelectedLinkElement() ) {
 			this._addActionsView();
@@ -510,6 +502,7 @@ export default class LinkUI extends Plugin {
 		const editor = this.editor;
 
 		this.stopListening( editor.ui, 'update' );
+		this.stopListening( this._balloon, 'change:visibleView' );
 
 		// Make sure the focus always gets back to the editable _before_ removing the focused form view.
 		// Doing otherwise causes issues in some browsers. See https://github.com/ckeditor/ckeditor5-link/issues/193.
@@ -525,7 +518,7 @@ export default class LinkUI extends Plugin {
 
 	/**
 	 * Makes the UI react to the {@link module:core/editor/editorui~EditorUI#event:update} event to
-	 * reposition itself when the editor ui should be refreshed.
+	 * reposition itself when the editor UI should be refreshed.
 	 *
 	 * See: {@link #_hideUI} to learn when the UI stops reacting to the `update` event.
 	 *
@@ -538,7 +531,7 @@ export default class LinkUI extends Plugin {
 		let prevSelectedLink = this._getSelectedLinkElement();
 		let prevSelectionParent = getSelectionParent();
 
-		this.listenTo( editor.ui, 'update', () => {
+		const update = () => {
 			const selectedLink = this._getSelectedLinkElement();
 			const selectionParent = getSelectionParent();
 
@@ -557,9 +550,10 @@ export default class LinkUI extends Plugin {
 				this._hideUI();
 			}
 			// Update the position of the panel when:
+			//  * link panel is in the visible stack
 			//  * the selection remains in the original link element,
 			//  * there was no link element in the first place, i.e. creating a new link
-			else {
+			else if ( this._isUIVisible ) {
 				// If still in a link element, simply update the position of the balloon.
 				// If there was no link (e.g. inserting one), the balloon must be moved
 				// to the new position in the editing view (a new native DOM range).
@@ -568,17 +562,20 @@ export default class LinkUI extends Plugin {
 
 			prevSelectedLink = selectedLink;
 			prevSelectionParent = selectionParent;
-		} );
+		};
 
 		function getSelectionParent() {
 			return viewDocument.selection.focus.getAncestors()
 				.reverse()
 				.find( node => node.is( 'element' ) );
 		}
+
+		this.listenTo( editor.ui, 'update', update );
+		this.listenTo( this._balloon, 'change:visibleView', update );
 	}
 
 	/**
-	 * Returns true when {@link #formView} is in the {@link #_balloon}.
+	 * Returns `true` when {@link #formView} is in the {@link #_balloon}.
 	 *
 	 * @readonly
 	 * @protected
@@ -600,7 +597,7 @@ export default class LinkUI extends Plugin {
   }
 
 	/**
-	 * Returns true when {@link #actionsView} is in the {@link #_balloon}.
+	 * Returns `true` when {@link #actionsView} is in the {@link #_balloon}.
 	 *
 	 * @readonly
 	 * @protected
@@ -611,7 +608,7 @@ export default class LinkUI extends Plugin {
 	}
 
 	/**
-	 * Returns true when {@link #actionsView} is in the {@link #_balloon} and it is
+	 * Returns `true` when {@link #actionsView} is in the {@link #_balloon} and it is
 	 * currently visible.
 	 *
 	 * @readonly
@@ -623,7 +620,7 @@ export default class LinkUI extends Plugin {
 	}
 
 	/**
-	 * Returns true when {@link #actionsView} or {@link #formView} is in the {@link #_balloon}.
+	 * Returns `true` when {@link #actionsView} or {@link #formView} is in the {@link #_balloon}.
 	 *
 	 * @readonly
 	 * @protected
@@ -634,7 +631,7 @@ export default class LinkUI extends Plugin {
 	}
 
 	/**
-	 * Returns true when {@link #actionsView} or {@link #formView} is in the {@link #_balloon} and it is
+	 * Returns `true` when {@link #actionsView} or {@link #formView} is in the {@link #_balloon} and it is
 	 * currently visible.
 	 *
 	 * @readonly
@@ -676,7 +673,7 @@ export default class LinkUI extends Plugin {
 	 * the {@link module:engine/view/document~Document editing view's} selection or `null`
 	 * if there is none.
 	 *
-	 * **Note**: For a non–collapsed selection the link element is only returned when **fully**
+	 * **Note**: For a non–collapsed selection, the link element is only returned when **fully**
 	 * selected and the **only** element within the selection boundaries.
 	 *
 	 * @private
